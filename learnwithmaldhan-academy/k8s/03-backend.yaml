@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+  namespace: maldhan-academy
+spec:
+  replicas: 2
+  selector:
+    matchLabels: {app: academy-api}
+  template:
+    metadata:
+      labels: {app: academy-api}
+    spec:
+      containers:
+      - name: api
+        image: maldhan/learnwithmaldhan-backend:v1
+        imagePullPolicy: Always
+        ports: [{name: http, containerPort: 5000}]
+        env:
+        - {name: PORT, value: "5000"}
+        - {name: DB_HOST, value: database}
+        - {name: DB_PORT, value: "5432"}
+        - {name: DB_NAME, value: academy}
+        - {name: DB_USER, value: academy_user}
+        - name: DB_PASSWORD
+          valueFrom: {secretKeyRef: {name: academy-db-secret, key: POSTGRES_PASSWORD}}
+        readinessProbe:
+          httpGet: {path: /api/ready, port: 5000}
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        livenessProbe:
+          httpGet: {path: /api/health, port: 5000}
+          initialDelaySeconds: 20
+          periodSeconds: 20
+        resources:
+          requests: {cpu: 100m, memory: 128Mi}
+          limits: {cpu: 500m, memory: 512Mi}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: api
+  namespace: maldhan-academy
+spec:
+  type: ClusterIP
+  selector: {app: academy-api}
+  ports: [{name: http, port: 5000, targetPort: 5000}]
